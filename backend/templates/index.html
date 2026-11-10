@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Text Assistant — Résumeur Multilingue</title>
+  <style>
+    /* Reset & base */
+    :root{
+      --bg:#f7f9fb; --card:#ffffff; --accent:#2563eb; --muted:#6b7280; --success:#10b981;
+      --radius:12px; --container:1100px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:var(--bg); color:#111827}
+    .wrap{max-width:var(--container);margin:28px auto;padding:18px}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    header h1{font-size:20px;margin:0}
+    header p{margin:0;color:var(--muted);font-size:13px}
+
+    /* Layout */
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:18px}
+    .card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:0 6px 18px rgba(15,23,42,0.06)}
+
+    /* Text area */
+    textarea{width:100%;min-height:260px;padding:12px;border-radius:8px;border:1px solid #e6e9ef;resize:vertical;font-size:14px}
+    .controls{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+    .btn{background:var(--accent);color:#fff;padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:600}
+    .btn.ghost{background:transparent;color:var(--accent);border:1px solid rgba(37,99,235,0.12)}
+    .select, .small{padding:8px 10px;border-radius:8px;border:1px solid #e6e9ef;background:#fff}
+
+    /* Result area */
+    .result{min-height:220px;padding:12px;border-radius:8px;border:1px dashed #e6e9ef;background:linear-gradient(180deg,#fff, #fbfdff)}
+    .actions{display:flex;gap:8px;align-items:center;margin-top:10px}
+
+    /* Sidebar */
+    .meta{display:flex;flex-direction:column;gap:12px}
+    .lang-row{display:flex;gap:8px;align-items:center}
+    .lang-row label{font-size:14px;color:var(--muted)}
+
+    /* Responsive */
+    @media (max-width:980px){
+      .grid{grid-template-columns:1fr;}
+      .result{min-height:180px}
+    }
+
+    /* Small helpers */
+    .muted{color:var(--muted);font-size:13px}
+    .chip{display:inline-block;padding:6px 8px;border-radius:999px;border:1px solid #e6e9ef;font-size:13px}
+
+    /* RTL support when Arabic */
+    html[dir="rtl"]{direction:rtl}
+    html[dir="rtl"] .grid{direction:rtl}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>AI Text Assistant</h1>
+        <p>Résumeur • Correcteur • Reformulateur — Arabe / Français / Anglais</p>
+      </div>
+      <div class="chip">Groupe: Safia Tirar • Boussoufi Kenza • Souhaib Madhour</div>
+    </header>
+
+    <main class="grid">
+      <!-- MAIN LEFT -->
+      <section class="card">
+        <label class="muted">Collez ou saisissez votre texte</label>
+        <textarea id="inputText" placeholder="Collez votre texte ici..." aria-label="Zone de texte"></textarea>
+
+        <div class="controls" style="margin-top:10px">
+          <select id="operation" class="select">
+            <option value="resume_court">Résumé — court</option>
+            <option value="resume_moyen">Résumé — moyen</option>
+            <option value="resume_long">Résumé — long</option>
+            <option value="correction">Correction orthographique</option>
+            <option value="reformulation_simple">Reformulation — simple</option>
+            <option value="reformulation_professionnelle">Reformulation — professionnelle</option>
+            <option value="bullets">Transformer en bullet points</option>
+          </select>
+
+          <select id="summaryStyle" class="select">
+            <option value="default">Style par défaut</option>
+            <option value="academique">Académique</option>
+            <option value="marketing">Marketing / Commercial</option>
+          </select>
+
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button id="generateBtn" class="btn">Générer</button>
+            <button id="clearBtn" class="btn ghost">Effacer</button>
+          </div>
+        </div>
+
+        <div class="muted" style="margin-top:8px">Conseil : tu peux sélectionner une partie du texte pour ne traiter que cette portion.</div>
+
+        <div style="margin-top:16px" class="card">
+          <label class="muted">Résultat</label>
+          <div id="result" class="result" tabindex="0">Le résultat apparaîtra ici après génération.</div>
+
+          <div class="actions">
+            <button id="copyBtn" class="btn ghost">Copier</button>
+            <button id="downloadPdfBtn" class="btn ghost">Télécharger PDF</button>
+            <button id="compareBtn" class="btn">Comparer Avant / Après</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SIDEBAR RIGHT -->
+      <aside class="card meta">
+        <div>
+          <label class="muted">Langue</label>
+          <div class="lang-row">
+            <select id="langSelect" class="select">
+              <option value="auto">Auto (détection)</option>
+              <option value="fr">Français</option>
+              <option value="en">English</option>
+              <option value="ar">العربية</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="muted">Options avancées</label>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+            <label><input type="checkbox" id="preserveFormatting" /> Conserver le formatage (paragraphes)</label>
+            <label><input type="checkbox" id="strictSpelling" /> Mode correction stricte</label>
+            <label><input type="checkbox" id="enableRtl" /> Forcer RTL pour l'Arabe</label>
+          </div>
+        </div>
+
+        <!-- <div>
+          <label class="muted">Modèle LLM</label>
+          <select id="modelSelect" class="select">
+            <option value="openai">OpenAI GPT (API)</option>
+            <option value="mistral">Mistral / Auto</option>
+            <option value="local">Modèle local (hone)</option>
+          </select>
+          <div class="muted" style="margin-top:8px;font-size:12px">Remarque : l'intégration backend définit le modèle réel et la clé API.</div>
+        </div> -->
+
+        <div>
+          <label class="muted">Limite de caractères</label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <input id="charLimit" class="small" type="number" value="5000" min="500" style="width:100%" />
+          </div>
+        </div>
+
+        <div style="margin-top:auto">
+          <label class="muted">Documentation rapide</label>
+          <ul style="margin:8px 0 0 18px;color:var(--muted);font-size:13px">
+            <li>API backend : POST /api/process</li>
+            <li>Payload JSON : { text, operation, language, options }</li>
+            <li>Réponse JSON : { result }</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <footer style="text-align:center;margin-top:18px;color:var(--muted);font-size:13px">© AI Text Assistant — Projet PFA — Groupe Safia / Kenza / Souhaib</footer>
+  </div>
+
+  <script>
+    // Frontend JS : interactions simples, appel backend minimal
+    const inputText = document.getElementById('inputText');
+    const resultDiv = document.getElementById('result');
+    const generateBtn = document.getElementById('generateBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const langSelect = document.getElementById('langSelect');
+    const enableRtl = document.getElementById('enableRtl');
+    const operation = document.getElementById('operation');
+    const charLimit = document.getElementById('charLimit');
+
+    function setDirectionFromLang(code){
+      if(code === 'ar') document.documentElement.setAttribute('dir','rtl');
+      else document.documentElement.setAttribute('dir','ltr');
+    }
+
+    // Basic client-side validations
+    function validate(){
+      const txt = inputText.value || '';
+      if(!txt.trim()){
+        alert('Veuillez coller ou saisir un texte.');
+        return false;
+      }
+      if(txt.length > Number(charLimit.value)){
+        alert('Le texte dépasse la limite définie. Réduisez la taille ou augmentez la limite.');
+        return false;
+      }
+      return true;
+    }
+
+    clearBtn.addEventListener('click',()=>{
+      inputText.value=''; resultDiv.textContent='Le résultat apparaîtra ici après génération.';
+    });
+
+    copyBtn.addEventListener('click',async()=>{
+      try{
+        await navigator.clipboard.writeText(resultDiv.innerText);
+        alert('Copié !');
+      }catch(e){ alert('Impossible de copier : ' + e.message)}
+    });
+
+    generateBtn.addEventListener('click', async ()=>{
+      if(!validate()) return;
+
+      // prepare payload
+      const payload = {
+        text: (window.getSelection().toString() || inputText.value).trim(),
+        operation: operation.value,
+        language: langSelect.value,
+        options: {
+          preserveFormatting: document.getElementById('preserveFormatting').checked,
+          strictSpelling: document.getElementById('strictSpelling').checked
+        }
+      };
+
+      // UI feedback
+      generateBtn.disabled = true; generateBtn.textContent='Génération...';
+      resultDiv.textContent = 'Génération en cours — veuillez patienter...';
+
+      try{
+        // Call backend API (to implement)
+        const res = await fetch('/api/process',{
+          method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
+        });
+
+        const data = await res.json().catch(()=> ({}));
+        if(!res.ok){
+          const msg = data.error || `Erreur réseau (${res.status})`;
+          throw new Error(msg);
+        }
+
+        resultDiv.textContent = data.result || 'Aucun résultat.';
+
+        // auto switch direction if Arabic
+        if(payload.language === 'ar' || (payload.language==='auto' && data.detected_language==='ar')){
+          setDirectionFromLang('ar');
+        }else{
+          setDirectionFromLang('fr');
+        }
+
+      }catch(err){
+        resultDiv.textContent = 'Erreur lors de la génération : ' + err.message;
+      }finally{
+        generateBtn.disabled=false; generateBtn.textContent='Générer';
+      }
+    });
+
+    // Compare before / after simple modal (inline)
+    document.getElementById('compareBtn').addEventListener('click', ()=>{
+      const before = inputText.value || '[aucun texte]';
+      const after = resultDiv.innerText || '[aucun résultat]';
+      const w = window.open('','compare','width=900,height=600');
+      w.document.write(`<pre style="white-space:pre-wrap;font-family:Inter,Arial;padding:18px">Avant :\n${escapeHtml(before)}\n\nAprès :\n${escapeHtml(after)}</pre>`);
+    });
+
+    function escapeHtml(s){ return s.replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+    // Download PDF from backend
+    document.getElementById('downloadPdfBtn').addEventListener('click', async ()=>{
+      const content = resultDiv.innerText || '';
+      if(!content.trim()){
+        alert('Aucun contenu à exporter en PDF.');
+        return;
+      }
+      try{
+        const res = await fetch('/api/download-pdf', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ content })
+        });
+        if(!res.ok) throw new Error(`Erreur PDF (${res.status})`);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'resultat.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }catch(e){
+        alert('Impossible de télécharger le PDF : ' + e.message);
+      }
+    });
+
+    // When toggling enableRtl, force document direction
+    enableRtl.addEventListener('change', ()=>{
+      if(enableRtl.checked) setDirectionFromLang('ar'); else setDirectionFromLang('fr');
+    });
+
+    // small enhancement: ctrl+enter to generate
+    inputText.addEventListener('keydown',(e)=>{ if(e.ctrlKey && e.key === 'Enter') generateBtn.click(); });
+  </script>
+</body>
+</html>
